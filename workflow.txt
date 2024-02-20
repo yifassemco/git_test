@@ -1,0 +1,2 @@
+This is a workflow design for new projects
+part 1: Pin down required specs for business process
