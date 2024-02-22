@@ -1,0 +1,29 @@
+    Private Function getBomItems(ByVal whscode As String, ByVal itemcode As String, ByVal qty As Decimal, ByVal docnum As String) As IList(Of BOMItem) ''gets the drill down
+
+        Dim ricgAgent As RICGDataAccess.AbstractDal = New AbstractDal()
+
+        Dim sql As String = "SELECT OITM.ItemCode AS Father, ITT1.Code AS Component, OITM.ItemName, " & _
+                            "ISNULL(OITT.Qauntity,1) AS ReqQty, (ISNULL(OITT.Qauntity,1) *  @1) AS TotalReqQty, OITW.OnHand, " & _
+                            "OITM.TreeType, @4 AS DocNum " & _
+                            "FROM OITM " & _
+                            "INNER JOIN OITW ON OITM.ItemCode = OITW.ItemCode AND OITW.WhsCode =@3 " & _
+                            "LEFT OUTER JOIN OITT ON OITT.Code = OITM.ItemCode " & _
+                            "LEFT OUTER JOIN ITT1 ON ITT1.Father = OITT.Code " & _
+                            "WHERE OITM.ItemCode  = @2 AND OITM.InvntItem = 'Y' " & _
+                            "ORDER BY ITT1.Code DESC"
+
+        Dim dsOut As DataSet = ricgAgent.GetDataFromDB(sql, Me._connectionstring, New Object() {qty, itemcode, whscode, docnum})
+
+        Dim items As IList(Of BOMItem) = convertDataSetToBom(dsOut)
+
+        For Each item As BOMItem In items
+
+            Dim hasChild As Boolean = item.TreeType = "P"
+
+            If hasChild Then
+                item.Components = getBomItems(whscode, item.Component, item.ReqQty * qty, docnum)
+            End If
+        Next
+
+        Return items
+    End Function
